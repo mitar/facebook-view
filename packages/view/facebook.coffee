@@ -2,6 +2,7 @@ limiter = Npm.require 'limiter'
 request = Npm.require 'request'
 async = Npm.require 'async'
 util = Npm.require 'util'
+urlModule = Npm.require 'url'
 
 class FacebookApiRequest
   @FACEBOOK_THROTTLE_REQUESTS: 600
@@ -56,7 +57,7 @@ class FacebookApiRequest
       # If limit === 0 we want to fetch multiple pages, everything, so we go for 5000 per page.
       qs.limit = limit or 5000
 
-    url = 'https://graph.facebook.com/' + url if url.substring(0, 4) isnt 'http'
+    url = urlModule.resolve 'https://graph.facebook.com', url
 
     page = (currentUrl, callback) =>
       @_limiter.removeTokens 1, (error, remainingRequests) =>
