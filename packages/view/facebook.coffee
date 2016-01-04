@@ -130,3 +130,77 @@ class FacebookApiRequest
 
   request: (url, options) ->
     blocking(@, @requestAsync) url, options
+
+class FacebookActivityRequest
+  @_instances: {}
+
+  constructor: (@instanceId, @username, @password) ->
+    return @_instances[@username] if @username of @constructor._instances
+
+    @constructor._instances[@username] = @
+
+    @_cookies = request.jar()
+    @_loggedIn = false
+
+  _assureLoggedIn: (callback) ->
+    return callback null if @_loggedIn
+
+    # TODO: A set of @_cookies.setCookie "<string>", 'https://www.facebook.com' calls, or proper login simulation.
+
+    @_loggedIn = true
+
+    callback null
+    return
+
+  requestAsync: (callback) ->
+    @_assureLoggedIn (error) =>
+      return callback error if error
+
+      request
+        url: 'https://www.facebook.com/ajax/timeline/all_activity/scroll.php'
+        jar: @_cookies
+        method: 'GET'
+        qs:
+          profile_id: 100001573909985
+          hidden_filter: ''
+          only_me_filter: 0
+          prev_shown_time: 1451696724
+          privacy_filter: ''
+          sidenav_filter: 'all'
+          scrubber_month: 1
+          scrubber_year: 2016
+          __a: 1
+      ,
+        (error, res, body) =>
+          if error or res?.statusCode isnt 200
+            try
+              body = body.replace /^for \(;;\);/, ''
+              body = JSON.parse body
+
+            return callback "Facebook activity request error, error: #{error}, status: #{res?.statusCode}, body: #{util.inspect body, depth: 10}"
+
+          body = body.replace /^for \(;;\);/, ''
+          return callback "Facebook activity empty response error." unless body
+
+          try
+            body = JSON.parse body
+          catch error
+            return callback "Facebook activity request parse error: #{error}, body: #{util.inspect body, depth: 10}"
+
+          if body.error
+            return callback "Facebook activity response error: #{body.error}, body: #{util.inspect body, depth: 10}"
+
+          activities = []
+
+          for [op, selector, argument, snippet] in body.domops when op is 'replace'
+            $ = cheerio.load snippet.__html,
+              normalizeWhitespace: false
+              xmlMode: false
+              decodeEntities: true
+
+            $.root().find('div:has(table.uiGrid)').each (index, element) =>
+              activities.push $(element).html()
+
+          callback null, activities
+
+    return
