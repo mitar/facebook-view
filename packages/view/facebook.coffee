@@ -3,7 +3,7 @@ request = Npm.require 'request'
 async = Npm.require 'async'
 util = Npm.require 'util'
 
-class FacebookRequest
+class FacebookApiRequest
   @FACEBOOK_THROTTLE_REQUESTS: 600
   @FACEBOOK_THROTTLE_INTERVAL: 600 * 1000 # ms
   @CONCURRENCY: 50
@@ -19,14 +19,15 @@ class FacebookRequest
     # Queue is really long.
     @queueWarning() if @_queue.length() > 1000
 
+    options ?= {}
     instance._facebookRequest url, options, callback
 
   @_queue: async.queue _.bind(@_worker, @), @CONCURRENCY
 
   constructor: (@instanceId, @accessToken) ->
-    return @_instances[@accessToken] if @accessToken of @_instances
+    return @constructor._instances[@accessToken] if @accessToken of @constructor._instances
 
-    @_instances[@accessToken] = @
+    @constructor._instances[@accessToken] = @
 
     @_limiter = new (limiter.RateLimiter)(@constructor.FACEBOOK_THROTTLE_REQUESTS, @constructor.FACEBOOK_THROTTLE_INTERVAL)
 
@@ -92,12 +93,12 @@ class FacebookRequest
 
                 return
 
-              return callback "Facebook request (#{currentUrl}) error, error: #{error}, status: #{res?.statusCode}, body: #{util.inspect body, depth: 10}"
+              return callback "Facebook API request (#{currentUrl}) error, error: #{error}, status: #{res?.statusCode}, body: #{util.inspect body, depth: 10}"
 
             try
               body = JSON.parse body
             catch error
-              return callback "Facebook request (#{currentUrl}) parse error: #{error}, body: #{util.inspect body, depth: 10}"
+              return callback "Facebook API request (#{currentUrl}) parse error: #{error}, body: #{util.inspect body, depth: 10}"
 
             # If limit === 0 we want to fetch multiple pages, everything, so we go for next page, if available.
             if limit is 0 and body.data and body.data.length isnt 0 and body.paging and body.paging.next
@@ -127,4 +128,4 @@ class FacebookRequest
     return
 
   request: (url, options) ->
-    Meteor.wrapAsync(@requestAsync, @) url, options
+    blocking(@, @requestAsync) url, options

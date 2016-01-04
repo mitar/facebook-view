@@ -25,7 +25,8 @@ Package.onUse(function (api) {
     'peerlibrary:blaze-layout-component@0.1.0',
     'materialize:materialize@0.97.1',
     'peerlibrary:computed-field@0.3.0',
-    'peerlibrary:reactive-field@0.1.0'
+    'peerlibrary:reactive-field@0.1.0',
+    'peerlibrary:blocking@0.5.2'
   ]);
 
   // Internal dependencies.
